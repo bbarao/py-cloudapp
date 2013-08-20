@@ -33,13 +33,13 @@ class PreferencesDialog(QDialog, Ui_Properties):
             self.voffsetSlider.setValue(self.settings['drop_topoffset'])
         except KeyError:
             pass
-       
+
     def saveSettings(self):
         self.loadSettings()
         password = self.settings['password']
         remember = self.settings['remember_pass']
         self.obj.setValue('username',self.settings['username'])
-        
+
         if remember:
             self.obj.setValue('password',password)
         elif self.obj.contains('password'):
@@ -61,16 +61,25 @@ class PreferencesDialog(QDialog, Ui_Properties):
         self.settings['auto_clipboard'] = self.clipboardCheckBox.isChecked()
         self.settings['notifications'] = self.notificationCheckBox.isChecked()
         self.settings['drop_topoffset'] = self.voffsetSlider.value()
-        
+
     def retriveSettings(self):
         """Retrive the saved settings"""
         self.settings['username'] = self.obj.value('username')
         self.settings['password'] = self.obj.value('password')
         self.settings['remember_pass'] = bool(self.obj.value('remember_pass'))
-        self.settings['list_size'] = int(self.obj.value('list_size'))
+
+        try:
+            self.settings['list_size'] = int(self.obj.value('list_size'))
+        except TypeError:
+            self.settings['list_size'] = 5
+
         self.settings['auto_clipboard'] = bool(self.obj.value('auto_clipboard'))
         self.settings['notifications'] = bool(self.obj.value('notifications'))
-        self.settings['drop_topoffset'] = int(self.obj.value('drop_topoffset'))
+
+        try:
+            self.settings['drop_topoffset'] = int(self.obj.value('drop_topoffset'))
+        except TypeError:
+            self.settings['drop_topoffset'] = 0
 
     class Signals(QObject):
         settingsChanged = pyqtSignal()
