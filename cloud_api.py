@@ -11,25 +11,25 @@ class RequestWithMethod(urllib2.Request):
 
     def get_method(self):
         return self._method
-    
+
 class CloudApi(object):
     """Asynchronus multithreaded library interfacing with the cloudapp api"""
-    
+
     apiUrl = "http://my.cl.ly"
     queue = Queue.Queue()
     uploadQueue = Queue.Queue()
-    
+
     def __init__(self, username, password):
         self.setLoginDetails(username, password)
         for i in range(3):
             t = self.ApiThread()
             t.setDaemon(True)
             t.start()
-        
+
         t = self.UploadThread()
         t.setDaemon(True)
         t.start()
-        
+
     def setLoginDetails(self, username, password):
         self.userName = username
         self.password = password
@@ -37,12 +37,12 @@ class CloudApi(object):
         authHandler.add_password("Application", "my.cl.ly", username, password)
         opener = urllib2.build_opener(authHandler)
         urllib2.install_opener(opener)
-        
+
     def getFileList(self, maxItems, callback):
         req = urllib2.Request(self.apiUrl + u'/items?page=1&per_page=' + str(maxItems))
         req.add_header('Accept', 'application/json')
         self.queue.put((req, callback))
-        
+
     def bookmark(self, url, callback = None):
         req = urllib2.Request(self.apiUrl + u'/items')
         req.add_header('Accept', 'application/json')
@@ -53,14 +53,14 @@ class CloudApi(object):
 
     def uploadFile(self, url, callback = None):
         self.uploadQueue.put((url, callback))
-    
+
     def delete(self, url, callback = None):
         req = RequestWithMethod(url, 'DELETE')
         req.add_header('Accept', 'application/json')
         self.queue.put((req, callback))
-    
+
     class ApiThread(threading.Thread):
-            
+
         def run(self):
             while True:
                 task = CloudApi.queue.get()
@@ -74,15 +74,15 @@ class CloudApi(object):
                         print "HTTP Error Code:" + str(e.code)
                     except urllib2.URLError, e:
                         print e.reason
-            
+
     class UploadThread(threading.Thread):
-        
+
         def getUploadParams(self):
             req = urllib2.Request('http://my.cl.ly/items/new')
             req.add_header('Accept', 'application/json')
             response = urllib2.urlopen(req)
             return json.load(response)
-            
+
         def run(self):
             while True:
                 task = CloudApi.uploadQueue.get()
@@ -91,16 +91,21 @@ class CloudApi(object):
                     uploadParams = self.getUploadParams()
                     if uploadParams:
                         try:
+                            filePath = urlparse.urlparse(self.url).path
+                            filename = os.path.basename(filePath)
+
+                            uploadParams['params']['key'] = uploadParams['params']['key'].replace('${filename}', filename)
+
                             form = MultiPartForm()
                             for name in uploadParams["params"]:
-                                form.addField(name.encode('utf8'), uploadParams["params"][name].encode('utf8'))
-                            
-                            filePath = urlparse.urlparse(self.url).path
+                                form.addField(name.encode('ascii'), uploadParams["params"][name].encode('ascii'))
+
                             fp = open(filePath, 'rb')
-                            form.addFile("file",os.path.basename(filePath) , fp)
+                            form.addFile("file", os.path.basename(filePath), fp)
+
                             body = str(form)
 
-                            req = urllib2.Request(uploadParams["url"])
+                            req = urllib2.Request(uploadParams["url"].encode('ascii'))
                             req.add_header('Content-type', form.getContentType())
                             req.add_header('Content-length', str(len(body)))
                             req.add_header('Accept', 'application/json')
@@ -114,4 +119,4 @@ class CloudApi(object):
                             print e.reason
                         except IOError, e:
                             print "IOError when opening file to upload: "+filePath
-           
+
