@@ -10,22 +10,24 @@ from trayicon import TrayIcon
 
 class DropWidget(QLabel):
 
+    hidden = True
+
     def __init__(self, parent=None):
         super(QWidget,self).__init__(parent)
         self.setWindowFlags(Qt.X11BypassWindowManagerHint | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
         self.signals = self.Signals()
         self.setAcceptDrops(1)
-        self.resize(QSize(238,68))
+        self.resize(QSize(217,68))
         self.setAlignment(Qt.AlignCenter)
-              
+        self.setPixmap(QPixmap(':/bg/cloudapp_droptarget.png'))
+
         self.trayIcon = TrayIcon()
         self.trayIcon.show()
         self.trayIcon.activated[QSystemTrayIcon.ActivationReason].connect(self.trayActivated)
         self.signals.itemDropped[str].connect(self.trayIcon.apiHandle.addItem)
-        
+
         self.trayIcon.apiHandle.pdialog.voffsetSlider.valueChanged[int].connect(self.vmove)
-        self.move(qApp.desktop().width()-227,self.trayIcon.apiHandle.pdialog.settings['drop_topoffset'])
-        self.slideIn()
+        self.move(qApp.desktop().screenGeometry().width()-217,self.trayIcon.apiHandle.pdialog.settings['drop_topoffset'])
 
     def vmove(self, val):
         self.move(self.x(),val)
@@ -33,7 +35,6 @@ class DropWidget(QLabel):
     def dragEnterEvent(self, event):
         if self.trayIcon.apiHandle.connected:
             event.acceptProposedAction()
-            self.slideOut()
 
     def dropEvent(self, event):
         mimeData = event.mimeData()
@@ -43,6 +44,7 @@ class DropWidget(QLabel):
                 for url in mimeData.urls():
                     if url.scheme() in ('file', 'http','https','ftp'):
                         self.signals.itemDropped.emit(url.toString())
+                        self.animOpacity()
 
     def trayActivated(self, reason):
         if reason == QSystemTrayIcon.Trigger:
@@ -53,40 +55,16 @@ class DropWidget(QLabel):
                 if deleteCheckBox.isChecked():
                     deleteCheckBox.toggle()
 
-    def mousePressEvent(self, event):
-        if event.x() in range(4,18):
-            self.toggle()
+    def animOpacity(self):
+        if self.hidden:
+            self.show()
+        else:
+            self.hide()
 
-    def slide(self, newRect):
-        self.a = QPropertyAnimation(self, "geometry")
-        self.a.setDuration(500)
-        self.a.setStartValue(self.geometry())
-        self.a.setEndValue(newRect)
-        self.a.setEasingCurve(QEasingCurve.InOutQuad)
-        self.a.start()          
-
-    def slideOut(self):        
-        current = self.geometry()
-        new = QRect(current)
-        new.moveTopLeft(QPoint(qApp.desktop().width() - 236, current.y()))
-        bg = ':/bg/cloudapp_droptarget_out.png'
-        self.setPixmap(QPixmap(bg))
-        self.slide(new)
-
-    def slideIn(self):
-        current = self.geometry()
-        new = QRect(current)
-        bg = ':/bg/cloudapp_droptarget_in.png'
-        self.setPixmap(QPixmap(bg))
-        new.moveTopLeft(QPoint(qApp.desktop().width() - 19, current.y()))
-        self.slide(new)
+        self.hidden = not self.hidden
 
     def toggle(self):
-        current = self.geometry()
-        if current.x() > (qApp.desktop().width() - 236):
-            self.slideOut()
-        else:
-            self.slideIn()
+        self.animOpacity()
 
     class Signals(QObject):
         itemDropped = pyqtSignal(str)
