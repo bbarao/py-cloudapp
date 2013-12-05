@@ -3,23 +3,26 @@
 #Copyright (C)2010 Abhinandh <abhinandh@gmail.com>
 #This Program in licenser under General Public License Ver 3
 
-from PyQt4.QtCore import QThread, QObject, pyqtSignal, QFileInfo, QString, QUrl
+from PyQt4.QtCore import QThread, QObject, pyqtSignal, QFileInfo, QString, QUrl, QTimer, SIGNAL
 from cloud_api import CloudApi
 import urlparse
 
 from preferences import PreferencesDialog
 
 class CloudHandle(object):
-    
+
     fileList = []
-    
+
     def __init__(self):
         self.pdialog = PreferencesDialog()
         self.pdialog.signals.settingsChanged.connect(self.initializeApi)
         self.signals = self.Signals()
+        self.updateTimer = QTimer();
+        QObject.connect(self.updateTimer, SIGNAL("timeout()"), self.getFileList)
         self.initializeApi()
 
     def initializeApi(self):
+        self.updateTimer.stop();
         self.connected = False
         try:
             username = self.pdialog.settings['username']
@@ -28,18 +31,19 @@ class CloudHandle(object):
                raise ValueError('Empty password or username')
             self.api = CloudApi(username, password)
             self.getFileList()
+            self.updateTimer.start(30000);
         except (KeyError, ValueError):
             self.pdialog.show()
-            print "Error reading settings"    
-        
+            print "Error reading settings"
+
     def getFileList(self):
         self.api.getFileList(self.pdialog.settings['list_size'], self.gotFileList)
-        
+
     def gotFileList(self, l):
         self.connected = True
         self.fileList = l
         self.signals.gotFileList.emit(l)
-        
+
     def addItem(self, url):
         url = str(url)
         if urlparse.urlparse(url).scheme == "file":
@@ -47,7 +51,7 @@ class CloudHandle(object):
         else:
             self.api.bookmark(url, self.itemAdded)
         self.signals.uploadStarted.emit()
-            
+
     def itemAdded(self, item):
         self.fileList.insert(0, item)
         self.fileList.pop()
@@ -60,11 +64,11 @@ class CloudHandle(object):
             else:
                 self.notify('File Uploaded - '+item['name'], item['url'])
         self.signals.uploadFinished.emit()
-        
+
     def deleteItem(self, url):
         url = str(url)
         self.api.delete(url, self.deleted)
-        
+
     def deleted(self, x):
         self.getFileList()
         if self.pdialog.settings['notifications']:
@@ -72,7 +76,7 @@ class CloudHandle(object):
 
     def showPreferences(self):
         self.pdialog.show()
-        
+
     def notify(self, title, text, icon=None):
         try:
             import pynotify
@@ -84,8 +88,8 @@ class CloudHandle(object):
                 print "there was a problem initializing the pynotify module"
         except:
             print "you don't seem to have pynotify installed"
-        
-        
+
+
     class Signals(QObject):
         gotFileList = pyqtSignal(list)
         loadClipboard = pyqtSignal(str)
