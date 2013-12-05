@@ -10,9 +10,9 @@ from cloudhandle import CloudHandle
 import icons_rc
 
 class TrayIcon(QSystemTrayIcon):
-    
+
     fileList = []
-    
+
     def __init__(self,parent = None):
         super(QSystemTrayIcon,self).__init__(parent)
         self.createContextMenu()
@@ -20,10 +20,10 @@ class TrayIcon(QSystemTrayIcon):
         self.apiHandle = CloudHandle()
         self.connectActions()
         self.deleteAction = DeleteAction()
-        self.noOfUploads = 0    
+        self.noOfUploads = 0
         self.setIcon(QIcon(":/icons/icons/icon.png"))
         self.setToolTip("Cloud App")
-        
+
     def createContextMenu(self):
         self.contextMenu = QMenu()
 
@@ -68,20 +68,20 @@ class TrayIcon(QSystemTrayIcon):
         #PyQt converts all Strings to QStrings, converting back.
         l = []
         for item in fileList:
-            m = {}   
+            m = {}
             for key in item:
                 m[str(key)] = str(item[key])
             l.append(m)
-        
+
         self.fileList = l
         self.fileListMenu.clear()
         self.fileListMenu.setTitle("File List")
         self.fileListMenu.setEnabled(1)
-        
+
         for item in self.fileList:
             newAction = QAction(self)
-            text = item["name"]
-            newAction.setText(text[:20] + ('...' if len(text) > 20 else ''))
+            text = '['+str(item['view_counter'])+'] '+item["name"]
+            newAction.setText(text[:35] + ('...' if len(text) > 35 else ''))
             newAction.setIcon(QIcon(":/icons/icons/" + QFileInfo(item["icon"]).fileName()))
             self.fileListMenu.addAction(newAction)
             item["action"] = newAction
@@ -111,7 +111,7 @@ class TrayIcon(QSystemTrayIcon):
     def uploadStatusAdd(self):
         self.uploadStatus.setVisible(1)
         self.noOfUploads += 1
-        text = "Adding "+ str(self.noOfUploads) + " File(s)." 
+        text = "Adding "+ str(self.noOfUploads) + " File(s)."
         self.uploadStatus.setText(text)
 
     def uploadStatusRemove(self):
@@ -119,7 +119,7 @@ class TrayIcon(QSystemTrayIcon):
         if self.noOfUploads == 0:
             self.uploadStatus.setVisible(0)
         else:
-            text = "Adding "+ str(self.noOfUploads) + " File(s)." 
+            text = "Adding "+ str(self.noOfUploads) + " File(s)."
             self.uploadStatus.setText(text)
 
 
@@ -132,13 +132,13 @@ class DeleteAction(QWidgetAction):
         super(DeleteAction, self).__init__(parent)
         self.widget = DeleteActionWidget()
         self.setDefaultWidget(self.widget)
-        
+
 class DeleteActionWidget(QWidget):
     def __init__(self, parent=None):
         super(DeleteActionWidget, self).__init__(parent)
         self.checkBox = QCheckBox()
         self.checkBox.setFixedSize(32,32)
-        
+
         self.label = QLabel('Delete')
         self.layout = QHBoxLayout()
         self.layout.addWidget(self.checkBox)
